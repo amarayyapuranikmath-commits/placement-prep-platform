@@ -1,0 +1,44 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Build files
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug / temporary files
+debug_*.py
+tmp_*.py
+*.log
+frontend.zip
+print(hello)
+
+# Generated/local storage
+storage/
+
+# Python test/cache files
+.pytest_cache/
+.coverage
+# Local test/debug files
+harness_run_log.txt
+=
