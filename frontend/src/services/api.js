@@ -1,7 +1,19 @@
 import axios from 'axios'
 
 const DEFAULT_BACKEND = 'http://127.0.0.1:8000'
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const normalizeApiBaseUrl = (value) => {
+  const rawValue = (value || '/api/v1').trim()
+  if (!rawValue) return '/api/v1'
+
+  if (rawValue.startsWith('http')) {
+    const base = rawValue.replace(/\/+$/, '')
+    return base.endsWith('/api/v1') ? base : `${base}/api/v1`
+  }
+
+  return rawValue.replace(/\/+$/, '')
+}
+
+const API_BASE_URL = import.meta.env.DEV ? '/api/v1' : normalizeApiBaseUrl(import.meta.env.VITE_API_URL)
 const STORAGE_KEY_ACCESS = 'placement_prep_access_token'
 const STORAGE_KEY_REFRESH = 'placement_prep_refresh_token'
 
