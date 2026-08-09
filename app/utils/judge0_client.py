@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import httpx
@@ -12,7 +13,7 @@ DEFAULT_JUDGE0_URL = "https://ce.judge0.com"
 
 
 async def execute_code(language: str, code: str, stdin: str) -> dict:
-    base_url = settings.JUDGE0_API_URL or DEFAULT_JUDGE0_URL
+    base_url = (settings.JUDGE0_API_URL or DEFAULT_JUDGE0_URL).rstrip('/')
 
     payload = {
         "source_code": code,
@@ -20,10 +21,7 @@ async def execute_code(language: str, code: str, stdin: str) -> dict:
         "stdin": stdin,
     }
 
-    headers = {
-        "content-type": "application/json",
-    }
-
+    headers = {"content-type": "application/json"}
     if settings.JUDGE0_API_KEY:
         headers["x-rapidapi-key"] = settings.JUDGE0_API_KEY
         headers["x-rapidapi-host"] = "judge0-ce.p.rapidapi.com"
@@ -31,13 +29,33 @@ async def execute_code(language: str, code: str, stdin: str) -> dict:
     logger.debug('Judge0 request payload: %s', payload)
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{base_url}/submissions?base64_encoded=false&wait=true",
+            submit_response = await client.post(
+                f"{base_url}/submissions?base64_encoded=false",
                 json=payload,
                 headers=headers,
             )
-            response.raise_for_status()
-            data = response.json()
+            submit_response.raise_for_status()
+            token = submit_response.json().get("token")
+            if not token:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Judge0 execution service returned no submission token",
+                )
+
+            status_response = await client.get(f"{base_url}/submissions/{token}?base64_encoded=false")
+            status_response.raise_for_status()
+            data = status_response.json()
+
+            attempts = 0
+            while data.get("status", {}).get("id") in {1, 2}:
+                attempts += 1
+                if attempts > 30:
+                    break
+                await asyncio.sleep(0.25)
+                status_response = await client.get(f"{base_url}/submissions/{token}?base64_encoded=false")
+                status_response.raise_for_status()
+                data = status_response.json()
+
             logger.debug('Judge0 response data: %s', data)
     except httpx.HTTPError as exc:
         logger.exception("Judge0 execution request failed")
